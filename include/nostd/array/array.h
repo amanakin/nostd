@@ -5,7 +5,7 @@
 #include <initializer_list>
 #include <stdexcept>
 
-#include "../util.h"
+#include <util.h>
 
 namespace nostd {
 

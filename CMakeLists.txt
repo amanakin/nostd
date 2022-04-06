@@ -4,7 +4,7 @@ project(template)
 set(CXX clang++)
 set(CMAKE_CXX_STANDARD 20)
 
-set(SANITIZER_FLAGS " -fsanitize=address -fsanitize=alignment -fsanitize=bool -fsanitize=bounds -fsanitize=enum -fsanitize=float-cast-overflow -fsanitize=float-divide-by-zero -fsanitize=integer-divide-by-zero -fsanitize=nonnull-attribute -fsanitize=null -fsanitize=object-size -fsanitize=return -fsanitize=returns-nonnull-attribute -fsanitize=shift -fsanitize=signed-integer-overflow -fsanitize=undefined -fsanitize=unreachable -fsanitize=vla-bound -fsanitize=vptr")
+set(SANITIZER_FLAGS " -fsanitize=address -fsanitize=alignment -fsanitize=bool -fsanitize=bounds -fsanitize=enum -fsanitize=float-cast-overflow -fsanitize=float-divide-by-zero -fsanitize=integer-divide-by-zero -fsanitize=nonnull-attribute -fsanitize=null -fsanitize=return -fsanitize=returns-nonnull-attribute -fsanitize=shift -fsanitize=signed-integer-overflow -fsanitize=undefined -fsanitize=unreachable -fsanitize=vla-bound -fsanitize=vptr")
 
 # -fno-elide-constructors #
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SANITIZER_FLAGS}")
@@ -16,7 +16,7 @@ set(SOURCES main.cc)
 
 set(SOURCES
     ${SOURCES}
-    #${CMAKE_CURRENT_SOURCE_DIR}/src/int.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/array.cc
     #${CMAKE_CURRENT_SOURCE_DIR}/src/logger.cc
     #${CMAKE_CURRENT_SOURCE_DIR}/src/utils.cc
     #${CMAKE_CURRENT_SOURCE_DIR}/src/rec_cnt.cc
@@ -28,3 +28,5 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
+
+add_subdirectory(tests)

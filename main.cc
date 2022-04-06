@@ -1,7 +1,15 @@
-#include <array.h>
-#include <storage.h>
+#include "include/nostd/array/array.h"
+#include "include/nostd/storage/storage.h"
+
+#include <iostream>
 
 int main() {
-    Array<int, 10, LocalStorage> intArray;
-    Array<bool, 10, LocalStorage> boolArray;
+    nostd::Array<int, nostd::storage::DynamicStorage> array(10);
+    array[0] = 1;
+    array.push_back(100);
+
+    for (size_t idx = 0; idx < array.size(); ++idx) {
+        std::cout << array[idx] << '\n';
+    }
 }
+

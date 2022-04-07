@@ -21,6 +21,14 @@ namespace nostd::storage {
 
 template <typename T, size_t Capacity>
 struct LocalStorage {
+    LocalStorage() = default;
+
+    LocalStorage(const LocalStorage& other) noexcept;
+    LocalStorage& operator=(const LocalStorage& other) noexcept;
+
+    LocalStorage(LocalStorage&& other) noexcept;
+    LocalStorage& operator=(LocalStorage&& other) noexcept;
+
     virtual const T& data(size_t idx) const;
     virtual T& data(size_t idx);
 
@@ -31,6 +39,38 @@ struct LocalStorage {
 private:
     T data_[Capacity];
 };
+
+template <typename T, size_t Capacity>
+LocalStorage<T, Capacity>::LocalStorage(const LocalStorage& other) noexcept {
+    for (size_t idx = 0; idx < Capacity; ++idx) {
+        data_[idx] = other.data_[idx];
+    }
+}
+
+template <typename T, size_t Capacity>
+LocalStorage<T, Capacity>& LocalStorage<T, Capacity>::operator=(const LocalStorage& other) noexcept {
+    if (this == &other) {
+        return *this;
+    }
+
+    for (size_t idx = 0; idx < Capacity; ++idx) {
+        data_[idx] = other.data_[idx];
+    }
+
+    return *this;
+}
+
+template <typename T, size_t Capacity>
+LocalStorage<T, Capacity>::LocalStorage(LocalStorage&& other) noexcept {
+    *this = other;
+}
+
+template <typename T, size_t Capacity>
+LocalStorage<T, Capacity>& LocalStorage<T, Capacity>::operator=(LocalStorage&& other) noexcept {
+    *this = other;
+
+    return *this;
+}
 
 template <typename T, size_t Size>
 const T& LocalStorage<T, Size>::data(size_t idx) const {

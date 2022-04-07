@@ -136,7 +136,7 @@ DynamicStorage<T>::DynamicStorage(size_t capacity)
 template <typename T>
 DynamicStorage<T>::DynamicStorage(const DynamicStorage<T> &other)
     : data_(nullptr), capacity_(0) {
-    allocate(capacity_);
+    allocate(other.capacity_);
 
     for (size_t idx = 0; idx < capacity_; ++idx) {
         data_[idx] = other.data_[idx];
@@ -170,7 +170,7 @@ DynamicStorage<T>& DynamicStorage<T>::operator=(DynamicStorage<T> &&other) noexc
         return *this;
     }
 
-    delete []data;
+    delete []data_;
     data_ = other.data_;
     capacity_ = other.capacity_;
 

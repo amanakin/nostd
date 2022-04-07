@@ -221,7 +221,7 @@ template <typename T>
 void DynamicStorage<T>::allocate(size_t new_capacity) {
     capacity_ = new_capacity;
 
-    delete data_;
+    delete []data_;
     data_ = new T[capacity_];
     if (data_ == nullptr) {
         throw std::bad_alloc();

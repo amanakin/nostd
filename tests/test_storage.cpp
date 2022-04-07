@@ -5,7 +5,6 @@
 /* TODO
     * Complete TestAssign
     * Compile test - why there's no in google test :(
-    *
 */
 
 template <typename Storage>

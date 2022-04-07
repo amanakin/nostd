@@ -62,3 +62,24 @@ TEST(LocalStorage, Assign) {
     auto storage3 = std::move(storage2);
     ASSERT_EQ(storage3.data(0), 0xDAD);
 }
+
+// ============================================================================
+
+TEST(DynamicStorage, Construct) {
+    nostd::storage::DynamicStorage<int> storage1;
+    ASSERT_EQ(storage1.capacity(), 0);
+
+    nostd::storage::DynamicStorage<int> storage2(10);
+    ASSERT_EQ(storage2.capacity(), 10);
+}
+
+TEST(DynamicStorage, DataAccess) {
+    nostd::storage::DynamicStorage<int> storage(10);
+    for (size_t idx = 0; idx < storage.capacity(); ++idx) {
+        storage.data(idx) = static_cast<int>(idx * 2);
+    }
+
+    for (size_t idx = 0; idx < storage.capacity(); ++idx) {
+        ASSERT_EQ(storage.data(idx), idx * 2);
+    }
+}

@@ -72,24 +72,24 @@ LocalStorage<T, Capacity>& LocalStorage<T, Capacity>::operator=(LocalStorage&& o
     return *this;
 }
 
-template <typename T, size_t Size>
-const T& LocalStorage<T, Size>::data(size_t idx) const {
-    if (idx >= Size) {
+template <typename T, size_t Capacity>
+const T& LocalStorage<T, Capacity>::data(size_t idx) const {
+    if (idx >= Capacity) {
         throw std::out_of_range("LocalStorage: data error");
     }
     return data_[idx];
 }
 
-template <typename T, size_t Size>
-T& LocalStorage<T, Size>::data(size_t idx) {
+template <typename T, size_t Capacity>
+T& LocalStorage<T, Capacity>::data(size_t idx) {
     return const_cast<T&>(
            const_cast<const LocalStorage*>(this)->data(idx)
            );
 }
 
-template <typename T, size_t Size>
-size_t LocalStorage<T, Size>::capacity() const {
-    return Size;
+template <typename T, size_t Capacity>
+size_t LocalStorage<T, Capacity>::capacity() const {
+    return Capacity;
 }
 
 // ============================================================================
@@ -99,16 +99,25 @@ struct DynamicStorage {
     DynamicStorage() noexcept;
     explicit DynamicStorage(size_t capacity);
 
+    DynamicStorage(const DynamicStorage& other);
+    DynamicStorage& operator=(const DynamicStorage& other);
+
+    DynamicStorage(DynamicStorage&& other) noexcept;
+    DynamicStorage& operator=(DynamicStorage&& other) noexcept;
+
     virtual const T& data(size_t idx) const;
     virtual T& data(size_t idx);
 
     [[nodiscard]] virtual size_t capacity() const;
 
-    void resize(size_t capacity);
+    // Allocate data and copy prev data
+    void resize(size_t new_capacity);
 
     virtual ~DynamicStorage();
-
 private:
+    // Allocate empty data
+    void allocate(size_t new_capacity);
+
     T* data_;
     size_t capacity_;
 };
@@ -120,9 +129,57 @@ DynamicStorage<T>::DynamicStorage() noexcept
 
 template <typename T>
 DynamicStorage<T>::DynamicStorage(size_t capacity)
-    : data_(nullptr), capacity_(capacity) {
-    resize(capacity_);
+    : data_(nullptr), capacity_(0) {
+    allocate(capacity);
 }
+
+template <typename T>
+DynamicStorage<T>::DynamicStorage(const DynamicStorage<T> &other)
+    : data_(nullptr), capacity_(0) {
+    allocate(capacity_);
+
+    for (size_t idx = 0; idx < capacity_; ++idx) {
+        data_[idx] = other.data_[idx];
+    }
+}
+
+template <typename T>
+DynamicStorage<T>& DynamicStorage<T>::operator=(const DynamicStorage<T> &other) {
+    if (this == &other) {
+        return *this;
+    }
+
+    allocate(other.capacity_);
+    for (size_t idx = 0; idx < capacity_; ++idx) {
+        data_[idx] = other.data_[idx];
+    }
+
+    return *this;
+}
+
+template <typename T>
+DynamicStorage<T>::DynamicStorage(DynamicStorage<T> &&other) noexcept
+    : data_(other.data_), capacity_(other.capacity_) {
+    other.data_ = nullptr;
+    other.capacity_ = 0;
+}
+
+template <typename T>
+DynamicStorage<T>& DynamicStorage<T>::operator=(DynamicStorage<T> &&other) noexcept {
+    if (this == &other) {
+        return *this;
+    }
+
+    delete []data;
+    data_ = other.data_;
+    capacity_ = other.capacity_;
+
+    other.data_ = nullptr;
+    other.capacity_ = 0;
+
+    return *this;
+}
+
 
 template <typename T>
 const T& DynamicStorage<T>::data(size_t idx) const {
@@ -151,23 +208,29 @@ size_t DynamicStorage<T>::capacity() const {
 
 template <typename T>
 void DynamicStorage<T>::resize(size_t new_capacity) {
-    auto new_data = new T[new_capacity];
-    if (new_data == nullptr) {
+    DynamicStorage new_storage(new_capacity);
+
+    for (size_t idx = 0; idx < std::min(capacity_, new_capacity); ++idx) {
+        new_storage.data_[idx] = data_[idx];
+    }
+
+    this->operator=(std::move(new_storage));
+}
+
+template <typename T>
+void DynamicStorage<T>::allocate(size_t new_capacity) {
+    capacity_ = new_capacity;
+
+    delete data_;
+    data_ = new T[capacity_];
+    if (data_ == nullptr) {
         throw std::bad_alloc();
     }
-
-    if (data_ != nullptr) {
-        for (size_t idx = 0; idx < std::min(new_capacity, capacity_); ++idx) {
-            new_data[idx] = data_[idx];
-        }
-
-        delete[] data_;
-    }
-
-    capacity_ = new_capacity;
-    data_ = new_data;
 }
+
+// ============================================================================
+
+
 
 } // nostd::storage
 
-// ============================================================================

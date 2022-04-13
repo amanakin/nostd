@@ -72,8 +72,8 @@ struct Array : public Storage<T> {
             : index_(index), array_(array) {
         }
 
-        bool operator==(const ArrayIterator& other) {return index_ == other.index_ && array_ == other.array_;}
-        bool operator!=(const ArrayIterator& other) {return index_ != other.index_ || array_ != other.array_;}
+        bool operator==(const ArrayIterator& other) const {return index_ == other.index_ && array_ == other.array_;}
+        bool operator!=(const ArrayIterator& other) const {return index_ != other.index_ || array_ != other.array_;}
 
         reference operator*() const {return (*array_)[index_];}
         pointer operator->() const {return &((*array_)[index_]);}

@@ -103,10 +103,10 @@ struct Array : public Storage<T> {
             return other.index_ - index_;
         }
 
-        bool operator>(const  ArrayIterator& other) {verify_array(other); return index_ > other.index_;}
-        bool operator<(const  ArrayIterator& other) {verify_array(other); return index_ < other.index_;}
-        bool operator>=(const ArrayIterator& other) {verify_array(other); return index_ >= other.index_;}
-        bool operator<=(const ArrayIterator& other) {verify_array(other); return index_ <= other.index_;}
+        bool operator>(const  ArrayIterator& other) const {verify_array(other); return index_ > other.index_;}
+        bool operator<(const  ArrayIterator& other) const {verify_array(other); return index_ < other.index_;}
+        bool operator>=(const ArrayIterator& other) const {verify_array(other); return index_ >= other.index_;}
+        bool operator<=(const ArrayIterator& other) const {verify_array(other); return index_ <= other.index_;}
 
 
     private:

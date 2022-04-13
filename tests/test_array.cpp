@@ -48,6 +48,18 @@ TEST(ConstructTest, SizeVal) {
 
 TEST(IteratorTest, Sort) {
     nostd::Array<int, nostd::storage::DynamicStorage> array({2, 9, 1, 1, 1, 5, 3, 10, 1, 213, 24124});
+
+    std::swap(*array.begin(), *(array.end()-2));
+
+    for (auto& val: array) {
+        std::cout << val << '\n';
+    }
+
+    std::cout << "=============\n";
+
+    std::cout << *array.begin() << '\n';
+    std::cout << *(array.end() - 1) << '\n';
+
     std::sort(array.begin(), array.end());
 
     for (auto& val: array) {
@@ -65,4 +77,10 @@ TEST(IteratorTest, Range) {
     for (auto& val: array) {
         std::cout << val << '\n';
     }
+}
+
+TEST(IteratorTest, Find) {
+    nostd::Array<int, nostd::storage::DynamicStorage> array({9, 5, 3, 10, 213});
+    auto it = std::find(array.begin(), array.end(), 10);
+    std::cout << *it << '\n';
 }

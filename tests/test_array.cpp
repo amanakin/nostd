@@ -50,12 +50,12 @@ TEST(IteratorTest, Sort) {
     nostd::Array<int, nostd::storage::DynamicStorage> array({9, 5, 3, 10, 213});
     std::sort(array.begin(), array.end());
 
-    for (size_t idx = 1; idx < array.size(); ++idx) {
-        ASSERT_LE(array[idx-1], array[idx]);
-    }
-
     for (auto& val: array) {
         std::cout << val << '\n';
+    }
+
+    for (size_t idx = 1; idx < array.size(); ++idx) {
+        ASSERT_LE(array[idx-1], array[idx]);
     }
 }
 

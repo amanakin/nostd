@@ -47,7 +47,7 @@ TEST(ConstructTest, SizeVal) {
 
 
 TEST(IteratorTest, Sort) {
-    nostd::Array<int, nostd::storage::DynamicStorage> array({9, 5, 3, 10, 213});
+    nostd::Array<int, nostd::storage::DynamicStorage> array({2, 9, 1, 1, 1, 5, 3, 10, 1, 213, 24124});
     std::sort(array.begin(), array.end());
 
     for (auto& val: array) {

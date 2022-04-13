@@ -26,8 +26,8 @@ struct LocalStorage {
     LocalStorage(const LocalStorage& other) noexcept;
     LocalStorage& operator=(const LocalStorage& other) noexcept;
 
-    LocalStorage(LocalStorage&& other) noexcept;
-    LocalStorage& operator=(LocalStorage&& other) noexcept;
+    LocalStorage(LocalStorage&& other) = delete;
+    LocalStorage& operator=(LocalStorage&& other) = delete;
 
     virtual const T& data(size_t idx) const;
     virtual T& data(size_t idx);
@@ -42,6 +42,10 @@ private:
 
 template <typename T, size_t Capacity>
 LocalStorage<T, Capacity>::LocalStorage(const LocalStorage& other) noexcept {
+    if (this == &other) {
+        return;
+    }
+
     for (size_t idx = 0; idx < Capacity; ++idx) {
         data_[idx] = other.data_[idx];
     }
@@ -56,18 +60,6 @@ LocalStorage<T, Capacity>& LocalStorage<T, Capacity>::operator=(const LocalStora
     for (size_t idx = 0; idx < Capacity; ++idx) {
         data_[idx] = other.data_[idx];
     }
-
-    return *this;
-}
-
-template <typename T, size_t Capacity>
-LocalStorage<T, Capacity>::LocalStorage(LocalStorage&& other) noexcept {
-    *this = other;
-}
-
-template <typename T, size_t Capacity>
-LocalStorage<T, Capacity>& LocalStorage<T, Capacity>::operator=(LocalStorage&& other) noexcept {
-    *this = other;
 
     return *this;
 }
@@ -136,8 +128,11 @@ DynamicStorage<T>::DynamicStorage(size_t capacity)
 template <typename T>
 DynamicStorage<T>::DynamicStorage(const DynamicStorage<T> &other)
     : data_(nullptr), capacity_(0) {
-    allocate(other.capacity_);
+    if (this == &other) {
+        return;
+    }
 
+    allocate(other.capacity_);
     for (size_t idx = 0; idx < capacity_; ++idx) {
         data_[idx] = other.data_[idx];
     }
@@ -159,7 +154,14 @@ DynamicStorage<T>& DynamicStorage<T>::operator=(const DynamicStorage<T> &other) 
 
 template <typename T>
 DynamicStorage<T>::DynamicStorage(DynamicStorage<T> &&other) noexcept
-    : data_(other.data_), capacity_(other.capacity_) {
+    : data_(nullptr), capacity_(0) {
+    if (this == &other) {
+        return;
+    }
+
+    data_ = other.data_;
+    capacity_ = other.capacity_;
+
     other.data_ = nullptr;
     other.capacity_ = 0;
 }
@@ -199,6 +201,7 @@ T& DynamicStorage<T>::data(size_t idx) {
 template <typename T>
 DynamicStorage<T>::~DynamicStorage() {
     delete[] data_;
+    capacity_ = 0;
 }
 
 template <typename T>
@@ -223,9 +226,6 @@ void DynamicStorage<T>::allocate(size_t new_capacity) {
 
     delete []data_;
     data_ = new T[capacity_];
-    if (data_ == nullptr) {
-        throw std::bad_alloc();
-    }
 }
 
 // ============================================================================

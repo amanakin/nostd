@@ -3,7 +3,6 @@
 #include <nostd/storage/storage.h>
 
 /* TODO
-    * Complete TestAssign
     * Compile test - why there's no in google test :(
 */
 
@@ -83,22 +82,12 @@ TEST(LocalStorage, Copy) {
     TestCopy(storage);
 }
 
-TEST(LocalStorage, Move) {
-    nostd::storage::LocalStorage<int, 1> storage;
-    storage.data(0) = 0xDAD;
-
-    TestMove(storage);
-}
-
 TEST(LocalStorage, Assign) {
     nostd::storage::LocalStorage<int, 1> storage1;
     storage1.data(0) = 0xDAD;
 
     auto storage2 = storage1;
     ASSERT_EQ(storage2.data(0), 0xDAD);
-
-    auto storage3 = std::move(storage2);
-    ASSERT_EQ(storage3.data(0), 0xDAD);
 }
 
 // ============================================================================

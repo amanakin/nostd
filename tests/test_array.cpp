@@ -16,6 +16,14 @@ void TestAccess(Array& array) {
     }
 };
 
+template <typename Array>
+void TestEqual(const Array& lhs, const Array& rhs) {
+    ASSERT_EQ(lhs.size(), rhs.size());
+    for (size_t idx = 0; idx < lhs.size(); ++idx) {
+        ASSERT_EQ(lhs[idx], rhs[idx]);
+    }
+}
+
 TEST(ConstructTest, DefaultConstruct) {
     nostd::Array<int, nostd::storage::DynamicStorage> array;
     ASSERT_EQ(array.size(), 0);
@@ -44,7 +52,12 @@ TEST(ConstructTest, SizeVal) {
     }
 }
 
+TEST(ConstructTest, Copy) {
+    nostd::Array<int, nostd::storage::DynamicStorage> array(10, 0xEDA);
+    auto copy(array);
 
+    TestEqual(array, copy);
+}
 
 TEST(IteratorTest, Sort) {
     nostd::Array<int, nostd::storage::DynamicStorage> array({2, 9, 1, 1, 1, 5, 3, 10, 1, 213, 24124});
@@ -58,9 +71,13 @@ TEST(IteratorTest, Sort) {
 TEST(IteratorTest, Range) {
     nostd::Array<int, nostd::storage::DynamicStorage> array({9, 5, 3, 10, 213});
 
+    size_t idx = 0;
     for (auto& val: array) {
-        std::cout << val << '\n';
+        ASSERT_EQ(array[idx], val);
+        ++idx;
     }
+
+    ASSERT_EQ(idx, array.size());
 }
 
 TEST(IteratorTest, Find) {
@@ -68,3 +85,4 @@ TEST(IteratorTest, Find) {
     auto it = std::find(array.begin(), array.end(), 10);
     ASSERT_EQ(*it, 10);
 }
+

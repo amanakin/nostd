@@ -110,6 +110,8 @@ private:
     // Allocate empty data
     void allocate(size_t new_capacity);
 
+    void swap(DynamicStorage& other);
+
     T* data_;
     size_t capacity_;
 };
@@ -226,6 +228,12 @@ void DynamicStorage<T>::allocate(size_t new_capacity) {
 
     delete []data_;
     data_ = new T[capacity_];
+}
+
+template <typename T>
+void DynamicStorage<T>::swap(DynamicStorage& other) {
+    std::swap(capacity_, other.capacity_);
+    std::swap(data_, other.data_);
 }
 
 // ============================================================================

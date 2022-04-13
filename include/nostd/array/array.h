@@ -17,7 +17,72 @@ template<
         template<typename StorageType> typename Storage
 >
 struct Array : public Storage<T> {
-    Array() noexcept = default;
+
+    template <bool isConst>
+    class ArrayIterator {
+    public:
+        using difference_type = int64_t;
+        using iterator_category = std::random_access_iterator_tag;
+
+        using value_type = std::conditional_t<isConst, const T, T>;
+        using pointer   = std::conditional_t<isConst, const T *, T *>;
+        using reference = std::conditional_t<isConst, const T &, T &>;
+
+        ArrayIterator(size_t index, Array* array) : index_(index), array_(array) {}
+
+        bool operator==(const ArrayIterator& other) const {return index_ == other.index_ && array_ == other.array_;}
+        bool operator!=(const ArrayIterator& other) const {return index_ != other.index_ || array_ != other.array_;}
+
+        reference operator*() const {return (*array_)[index_];}
+        pointer operator->() const {return &((*array_)[index_]);}
+
+        ArrayIterator& operator++() noexcept {++index_; return *this;}
+        ArrayIterator operator++(int) noexcept {
+            ArrayIterator prev(*this);
+            this->operator++();
+            return prev;
+        }
+
+        ArrayIterator& operator--() noexcept {--index_; return *this;}
+        ArrayIterator operator--(int) noexcept {
+            ArrayIterator prev(*this);
+            this->operator--();
+            return prev;
+        }
+
+        ArrayIterator& operator+=(difference_type diff) noexcept {index_ += diff; return *this;}
+        ArrayIterator& operator-=(difference_type diff) noexcept {index_ -= diff; return *this;}
+
+        ArrayIterator operator+(difference_type diff) const noexcept { return ArrayIterator(index_ + diff, array_); }
+        ArrayIterator operator-(difference_type diff) const noexcept { return ArrayIterator(index_ - diff, array_); }
+
+        difference_type operator-(ArrayIterator& other) const {
+            verify_array(other);
+            return index_ - other.index_;
+        }
+
+        bool operator>(const  ArrayIterator& other) const {verify_array(other); return index_ > other.index_;}
+        bool operator<(const  ArrayIterator& other) const {verify_array(other); return index_ < other.index_;}
+        bool operator>=(const ArrayIterator& other) const {verify_array(other); return index_ >= other.index_;}
+        bool operator<=(const ArrayIterator& other) const {verify_array(other); return index_ <= other.index_;}
+
+    private:
+        void verify_array(const ArrayIterator& other) const {
+            if (array_ != other.array_) {
+                throw std::invalid_argument("array iterators have different array pointers in operator-");
+            }
+        }
+
+        size_t index_;
+        Array* array_;
+    };
+
+    using iterator = ArrayIterator<false>;
+    using const_iterator = ArrayIterator<true>;
+    using reverse_iterator = std::reverse_iterator<iterator>;
+    using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+
+    Array() noexcept;
     explicit Array(size_t size);
     Array(size_t size, const T &val);
     Array(std::initializer_list<T> list);
@@ -58,80 +123,13 @@ struct Array : public Storage<T> {
     void pop_back();
 
     // Iterators
-    template <bool isConst>
-    class ArrayIterator {
-    public:
-        using difference_type = int64_t;
-        using iterator_category = std::random_access_iterator_tag;
+    iterator begin() noexcept;
+    const_iterator cbegin() const noexcept;
+    const_iterator begin() const noexcept;
 
-        using value_type = std::conditional_t<isConst, const T, T>;
-        using pointer   = std::conditional_t<isConst, const T *, T *>;
-        using reference = std::conditional_t<isConst, const T &, T &>;
-
-        ArrayIterator(size_t index, Array* array)
-            : index_(index), array_(array) {
-        }
-
-        bool operator==(const ArrayIterator& other) const {return index_ == other.index_ && array_ == other.array_;}
-        bool operator!=(const ArrayIterator& other) const {return index_ != other.index_ || array_ != other.array_;}
-
-        reference operator*() const {return (*array_)[index_];}
-        pointer operator->() const {return &((*array_)[index_]);}
-
-        ArrayIterator& operator++() noexcept {++index_; return *this;}
-        ArrayIterator operator++(int) noexcept {
-            ArrayIterator prev(*this);
-            this->operator++();
-            return prev;
-        }
-
-        ArrayIterator& operator--() noexcept {--index_; return *this;}
-        ArrayIterator operator--(int) noexcept {
-            ArrayIterator prev(*this);
-            this->operator--();
-            return prev;
-        }
-
-        ArrayIterator& operator+=(difference_type diff) noexcept {index_ += diff; return *this;}
-        ArrayIterator& operator-=(difference_type diff) noexcept {index_ -= diff; return *this;}
-
-        ArrayIterator operator+(difference_type diff) const noexcept { return ArrayIterator(index_ + diff, array_); }
-        ArrayIterator operator-(difference_type diff) const noexcept { return ArrayIterator(index_ - diff, array_); }
-
-        difference_type operator-(ArrayIterator& other) const {
-            verify_array(other);
-            return index_ - other.index_;
-        }
-
-        bool operator>(const  ArrayIterator& other) const {verify_array(other); return index_ > other.index_;}
-        bool operator<(const  ArrayIterator& other) const {verify_array(other); return index_ < other.index_;}
-        bool operator>=(const ArrayIterator& other) const {verify_array(other); return index_ >= other.index_;}
-        bool operator<=(const ArrayIterator& other) const {verify_array(other); return index_ <= other.index_;}
-
-
-    private:
-        void verify_array(const ArrayIterator& other) const {
-            if (array_ != other.array_) {
-                throw std::invalid_argument("array iterators have different array pointers in operator-");
-            }
-        }
-
-        size_t index_;
-        Array* array_;
-    };
-
-    using iterator = ArrayIterator<false>;
-    using const_iterator = ArrayIterator<true>;
-    using reverse_iterator = std::reverse_iterator<iterator>;
-    using const_reverse_iterator = std::reverse_iterator<const_iterator>;
-
-    iterator begin() noexcept {return iterator(0, this);}
-    const_iterator cbegin() const noexcept {return const_iterator(0, this);}
-    const_iterator begin() const noexcept {return cbegin();}
-
-    iterator end() noexcept {return iterator(size_, this);}
-    const_iterator cend() const noexcept {return const_iterator (size_, this);}
-    const_iterator end() const noexcept {return cend();}
+    iterator end() noexcept;
+    const_iterator cend() const noexcept;
+    const_iterator end() const noexcept;
 
 protected:
     void expand_capacity();
@@ -149,11 +147,18 @@ private:
 template<
         typename T,
         template<typename StorageType> typename Storage
->
+        >
+Array<T, Storage>::Array() noexcept
+    : size_(0) {
+}
+
+template<
+        typename T,
+        template<typename StorageType> typename Storage
+        >
 Array<T, Storage>::Array(size_t size)
         : size_(size), Storage<T>(size) {
 }
-
 
 template<
         typename T,
@@ -183,14 +188,14 @@ template<
         typename T,
         template<typename StorageType> typename Storage
         >
-Array<T, Storage>::Array(const Array& other) {
+Array<T, Storage>::Array(const Array& other)
+    : Storage<T>(other) {
     if (this == &other) {
         return;
     }
 
     size_ = other.size_;
 }
-
 
 template<
         typename T,
@@ -201,6 +206,7 @@ Array<T, Storage>& Array<T, Storage>::operator=(const Array& other) {
         return *this;
     }
 
+    static_cast<Storage<T>&>(*this) = other;
     size_ = other.size_;
 }
 
@@ -209,14 +215,14 @@ template<
         typename T,
         template<typename StorageType> typename Storage
         >
-Array<T, Storage>::Array(Array&& other) noexcept {
+Array<T, Storage>::Array(Array&& other) noexcept
+    : Storage<T>(other) {
     if (this == &other) {
         return;
     }
 
     size_ = other.size_;
 }
-
 
 template<
         typename T,
@@ -227,6 +233,7 @@ Array<T, Storage>& Array<T, Storage>::operator=(Array&& other) noexcept {
         return *this;
     }
 
+    static_cast<Storage<T>&>(*this) = other;
     size_ = other.size_;
     return *this;
 }
@@ -350,9 +357,57 @@ void Array<T, Storage>::pop_back() {
 template <
         typename T,
         template <typename StorageType> typename Storage
->
+        >
 void Array<T, Storage>::expand_capacity() {
     Storage<T>::resize(size_ * 2);
+}
+
+template <
+        typename T,
+        template <typename StorageType> typename Storage
+>
+typename Array<T, Storage>::iterator Array<T, Storage>::begin() noexcept {
+    return iterator(0, this);
+}
+
+template <
+        typename T,
+        template <typename StorageType> typename Storage
+>
+typename Array<T, Storage>::const_iterator Array<T, Storage>::cbegin() const noexcept {
+    return const_iterator(0, this);
+}
+
+template <
+        typename T,
+        template <typename StorageType> typename Storage
+        >
+typename Array<T, Storage>::const_iterator Array<T, Storage>::begin() const noexcept {
+    return cbegin();
+}
+
+template <
+        typename T,
+        template <typename StorageType> typename Storage
+>
+typename Array<T, Storage>::iterator Array<T, Storage>::end() noexcept {
+    return iterator(size_, this);
+}
+
+template <
+        typename T,
+        template <typename StorageType> typename Storage
+>
+typename Array<T, Storage>::const_iterator Array<T, Storage>::cend() const noexcept {
+    return const_iterator (size_, this);
+}
+
+template <
+        typename T,
+        template <typename StorageType> typename Storage
+>
+typename Array<T, Storage>::const_iterator Array<T, Storage>::end() const noexcept {
+    return cend();
 }
 
 // ============================================================================

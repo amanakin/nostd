@@ -82,5 +82,9 @@ TEST(IteratorTest, Range) {
 TEST(IteratorTest, Find) {
     nostd::Array<int, nostd::storage::DynamicStorage> array({9, 5, 3, 10, 213});
     auto it = std::find(array.begin(), array.end(), 10);
-    std::cout << *it << '\n';
+    if (it == array.end()) {
+        std::cout << "not found\n";
+    } else {
+        std::cout << *it << '\n';
+    }
 }

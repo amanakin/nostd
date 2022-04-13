@@ -79,9 +79,18 @@ TEST(IteratorTest, Range) {
     }
 }
 
+template <class It, class T>
+It Find(It first, It last, const T& value_)
+{
+    for (; first != last; ++first)
+        if (*first == value_)
+            break;
+    return first;
+}
+
 TEST(IteratorTest, Find) {
     nostd::Array<int, nostd::storage::DynamicStorage> array({9, 5, 3, 10, 213});
-    auto it = std::find(array.begin(), array.end(), 10);
+    auto it = Find(array.begin(), array.end(), 10);
     if (it == array.end()) {
         std::cout << "not found\n";
     } else {

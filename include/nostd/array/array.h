@@ -100,7 +100,7 @@ struct Array : public Storage<T> {
 
         difference_type operator-(ArrayIterator& other) const {
             verify_array(other);
-            return other.index_ - index_;
+            return index_ - other.index_;
         }
 
         bool operator>(const  ArrayIterator& other) const {verify_array(other); return index_ > other.index_;}

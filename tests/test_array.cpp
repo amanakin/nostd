@@ -48,23 +48,7 @@ TEST(ConstructTest, SizeVal) {
 
 TEST(IteratorTest, Sort) {
     nostd::Array<int, nostd::storage::DynamicStorage> array({2, 9, 1, 1, 1, 5, 3, 10, 1, 213, 24124});
-
-    std::swap(*array.begin(), *(array.end()-2));
-
-    for (auto& val: array) {
-        std::cout << val << '\n';
-    }
-
-    std::cout << "=============\n";
-
-    std::cout << *array.begin() << '\n';
-    std::cout << *(array.end() - 1) << '\n';
-
     std::sort(array.begin(), array.end());
-
-    for (auto& val: array) {
-        std::cout << val << '\n';
-    }
 
     for (size_t idx = 1; idx < array.size(); ++idx) {
         ASSERT_LE(array[idx-1], array[idx]);
@@ -79,21 +63,8 @@ TEST(IteratorTest, Range) {
     }
 }
 
-template <class It, class T>
-It Find(It first, It last, const T& value_)
-{
-    for (; first != last; ++first)
-        if (*first == value_)
-            break;
-    return first;
-}
-
 TEST(IteratorTest, Find) {
     nostd::Array<int, nostd::storage::DynamicStorage> array({9, 5, 3, 10, 213});
-    auto it = Find(array.begin(), array.end(), 10);
-    if (it == array.end()) {
-        std::cout << "not found\n";
-    } else {
-        std::cout << *it << '\n';
-    }
+    auto it = std::find(array.begin(), array.end(), 10);
+    ASSERT_EQ(*it, 10);
 }

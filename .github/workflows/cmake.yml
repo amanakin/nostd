@@ -18,12 +18,16 @@ jobs:
     - name: Make
       working-directory: ${{github.workspace}}/build/
       run: make -j
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v1
       
-    - name: Test Storage
-      working-directory: ${{github.workspace}}/build/tests/
-      run: ./test_storage
+      - name: Test Storage
+        working-directory: ${{github.workspace}}/build/tests/
+        run: ./test_storage
       
-    - name: Test Array
-      working-directory: ${{github.workspace}}/build/tests/
-      run: ./test_array
-      
+      - name: Test Array
+        working-directory: ${{github.workspace}}/build/tests/
+        run: ./test_array

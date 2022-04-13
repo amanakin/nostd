@@ -53,6 +53,10 @@ TEST(IteratorTest, Sort) {
     for (size_t idx = 1; idx < array.size(); ++idx) {
         ASSERT_LE(array[idx-1], array[idx]);
     }
+
+    for (auto& val: array) {
+        std::cout << val << '\n';
+    }
 }
 
 TEST(IteratorTest, Range) {

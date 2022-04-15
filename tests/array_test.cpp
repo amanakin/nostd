@@ -24,6 +24,21 @@ void TestEqual(const Array& lhs, const Array& rhs) {
     }
 }
 
+template <typename Storage>
+void TestMove(const Storage& storage) {
+    auto copy(storage);
+
+    auto moved(std::move(copy));
+    TestEqual(moved, storage);
+}
+
+template <typename Storage>
+void TestAssign(Storage& lhs, const Storage& rhs) {
+    auto copy(rhs);
+
+    lhs = rhs;
+}
+
 TEST(ConstructTest, DefaultConstruct) {
     nostd::Array<int, nostd::storage::DynamicStorage> array;
     ASSERT_EQ(array.size(), 0);
@@ -57,6 +72,16 @@ TEST(ConstructTest, Copy) {
     auto copy(array);
 
     TestEqual(array, copy);
+}
+
+TEST(ConstructTest, Move) {
+    nostd::Array<int, nostd::storage::DynamicStorage> array(10, 0xEDA);
+
+    TestMove(array);
+}
+
+TEST(ConstructTest, Assign) {
+
 }
 
 TEST(IteratorTest, Sort) {

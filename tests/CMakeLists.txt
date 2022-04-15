@@ -8,8 +8,8 @@ set(SANITIZER_FLAGS " -fsanitize=address -fsanitize=alignment -fsanitize=bool -f
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SANITIZER_FLAGS}")
 set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} ${SANITIZER_FLAGS}")
 
-add_executable(test_array test_array.cpp)
-add_executable(test_storage test_storage.cpp)
+add_executable(array_test   array_test.cpp)
+add_executable(storage_test storage_test.cpp)
 
-target_link_libraries(test_storage gtest gtest_main nostd)
-target_link_libraries(test_array gtest gtest_main nostd)
+target_link_libraries(array_test   gtest gtest_main nostd)
+target_link_libraries(storage_test gtest gtest_main nostd)

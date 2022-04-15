@@ -2,10 +2,6 @@
 
 #include <nostd/storage/storage.h>
 
-/* TODO
-    * Compile test - why there's no in google test :(
-*/
-
 template <typename Storage>
 void TestAccess(Storage& storage) {
     for (size_t idx = 0; idx < storage.capacity(); ++idx) {
@@ -39,7 +35,7 @@ void TestEqual(const Storage& lhs, const Storage& rhs) {
 
 template <typename Storage>
 void TestCopy(const Storage& storage) {
-    auto copy(storage);
+    auto copy(storage); // NOLINT
 
     TestEqual(storage, copy);
 }
@@ -53,10 +49,11 @@ void TestMove(const Storage& storage) {
 }
 
 template <typename Storage>
-void TestAssign(Storage& lhs, const Storage& rhs) {
-    auto copy(rhs);
+void TestAssign(const Storage& storage) {
+    Storage new_storage;
 
-    lhs = rhs;
+    new_storage = storage;
+    TestEqual(new_storage, storage);
 }
 // ============================================================================
 

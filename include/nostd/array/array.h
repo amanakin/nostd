@@ -15,7 +15,7 @@ namespace nostd {
 template<
         typename T,
         template<typename StorageType> typename Storage
->
+        >
 struct Array : public Storage<T> {
 
     template <bool isConst>
@@ -96,14 +96,14 @@ struct Array : public Storage<T> {
     ~Array() = default;
 
     // Access
-    const T &operator[](size_t idx) const;
-    T &operator[](size_t idx);
+    [[nodiscard]] const T &operator[](size_t idx) const;
+    [[nodiscard]] T &operator[](size_t idx);
 
-    T &front();
-    const T &front() const;
+    [[nodiscard]] T &front();
+    [[nodiscard]] const T &front() const;
 
-    T &back();
-    const T &back() const;
+    [[nodiscard]] T &back();
+    [[nodiscard]] const T &back() const;
 
     // Storage
     [[nodiscard]] bool empty() const noexcept;

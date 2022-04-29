@@ -1,165 +1,92 @@
 #pragma once
 
-#include <cstddef>
-#include <cassert>
-#include <exception>
-#include <stdexcept>
-#include <new>
-#include <initializer_list>
-#include <algorithm>
-
 namespace nostd::storage {
 
-template <typename T>
+template <typename T, typename Allocator = std::allocator<T>>
 struct DynamicStorage {
-    DynamicStorage() noexcept;
-    explicit DynamicStorage(size_t capacity);
+    using value_type = T;
+    using size_type = size_t;
 
-    DynamicStorage(const DynamicStorage& other);
-    DynamicStorage& operator=(const DynamicStorage& other);
+    explicit DynamicStorage(const Allocator& alloc = Allocator()) noexcept;
+    void allocate(size_type cap);
+    void deallocate();
+    void swap(const DynamicStorage& other);
 
-    DynamicStorage(DynamicStorage&& other) noexcept;
-    DynamicStorage& operator=(DynamicStorage&& other) noexcept;
+    // Data
+    [[nodiscard]] size_type capacity() const;
 
-    virtual const T& data(size_t idx) const;
-    virtual T& data(size_t idx);
+    template <typename... Args>
+    void construct(size_type idx, Args&&... args ) {
+        traits_t::construct(alloc_, data_ + idx, std::forward<Args>(args)...);
+    }
+    void destruct(size_type idx);
 
-    [[nodiscard]] virtual size_t capacity() const;
+    [[nodiscard]] const T& operator[](size_type idx) const;
+    [[nodiscard]] T& operator[](size_type idx);
 
-    // Allocate data and copy prev data
-    void resize(size_t new_capacity);
-
-    virtual ~DynamicStorage();
 private:
-    // Allocate empty data
-    void allocate(size_t new_capacity);
+    using traits_t = std::allocator_traits<Allocator>;
 
-    void swap(DynamicStorage& other);
-
-    T* data_;
-    size_t capacity_;
+    Allocator alloc_;
+    T* data_{nullptr};
+    size_type capacity_{};
 };
 
-template <typename T>
-DynamicStorage<T>::DynamicStorage() noexcept
-        : data_(nullptr), capacity_(0) {
+// ----------------------------------------------------------------------------
+
+template <typename T, typename Allocator>
+DynamicStorage<T, Allocator>::DynamicStorage(const Allocator& alloc) noexcept
+    : alloc_(alloc) {
 }
 
-template <typename T>
-DynamicStorage<T>::DynamicStorage(size_t capacity)
-        : data_(nullptr), capacity_(0) {
-    allocate(capacity);
-}
-
-template <typename T>
-DynamicStorage<T>::DynamicStorage(const DynamicStorage<T> &other)
-        : data_(nullptr), capacity_(0) {
-    if (this == &other) {
+template <typename T, typename Allocator>
+void DynamicStorage<T, Allocator>::allocate(size_type cap) {
+    if (capacity_ == 0) {
         return;
     }
 
-    allocate(other.capacity_);
-    for (size_t idx = 0; idx < capacity_; ++idx) {
-        data_[idx] = other.data_[idx];
-    }
+    data_ = traits_t::allocate(alloc_, cap);
+    capacity_ = cap;
 }
 
-template <typename T>
-DynamicStorage<T>& DynamicStorage<T>::operator=(const DynamicStorage<T> &other) {
-    if (this == &other) {
-        return *this;
-    }
-
-    allocate(other.capacity_);
-    for (size_t idx = 0; idx < capacity_; ++idx) {
-        data_[idx] = other.data_[idx];
-    }
-
-    return *this;
-}
-
-template <typename T>
-DynamicStorage<T>::DynamicStorage(DynamicStorage<T> &&other) noexcept
-        : data_(nullptr), capacity_(0) {
-    if (this == &other) {
+template <typename T, typename Allocator>
+void DynamicStorage<T, Allocator>::deallocate() {
+    if (capacity_ == 0) {
         return;
     }
 
-    data_ = other.data_;
-    capacity_ = other.capacity_;
-
-    other.data_ = nullptr;
-    other.capacity_ = 0;
+    traits_t::deallocate(alloc_, data_, capacity_);
 }
 
-template <typename T>
-DynamicStorage<T>& DynamicStorage<T>::operator=(DynamicStorage<T> &&other) noexcept {
-    if (this == &other) {
-        return *this;
-    }
-
-    delete []data_;
-    data_ = other.data_;
-    capacity_ = other.capacity_;
-
-    other.data_ = nullptr;
-    other.capacity_ = 0;
-
-    return *this;
+template <typename T, typename Allocator>
+void DynamicStorage<T, Allocator>::swap(const DynamicStorage& other) {
+    std::swap(capacity_, other.capacity_);
+    std::swap(alloc_, other.alloc_);
+    std::swap(data_, other.data_);
 }
 
+// ----------------------------------------------------------------------------
 
-template <typename T>
-const T& DynamicStorage<T>::data(size_t idx) const {
-    if (idx >= capacity_) {
-        throw std::out_of_range("AllocatorStorage: data error");
-    }
-    return data_[idx];
-}
-
-template <typename T>
-T& DynamicStorage<T>::data(size_t idx) {
-    return const_cast<T&>(
-            const_cast<const DynamicStorage*>(this)->data(idx)
-    );
-}
-
-template <typename T>
-DynamicStorage<T>::~DynamicStorage() {
-    delete[] data_;
-    capacity_ = 0;
-}
-
-template <typename T>
-size_t DynamicStorage<T>::capacity() const {
+template <typename T, typename Allocator>
+typename DynamicStorage<T, Allocator>::size_type DynamicStorage<T, Allocator>::capacity() const {
     return capacity_;
 }
 
-template <typename T>
-void DynamicStorage<T>::resize(size_t new_capacity) {
-    DynamicStorage new_storage(new_capacity);
-
-    for (size_t idx = 0; idx < std::min(capacity_, new_capacity); ++idx) {
-        new_storage.data_[idx] = std::move(data_[idx]);
-    }
-
-    swap(new_storage);
+template <typename T, typename Allocator>
+void DynamicStorage<T, Allocator>::destruct(size_type idx) {
+    traits_t::destroy(alloc_, data_ + idx);
 }
 
-template <typename T>
-void DynamicStorage<T>::allocate(size_t new_capacity) {
-    capacity_ = new_capacity;
+template <typename T, typename Allocator>
+const typename DynamicStorage<T, Allocator>::value_type& DynamicStorage<T, Allocator>::operator[](size_type idx) const {
 
-    delete []data_;
-    data_ = new T[capacity_];
-
-    // std::fill(str.begin(), str.end(), 0);
 }
 
-template <typename T>
-void DynamicStorage<T>::swap(DynamicStorage& other) {
-    std::swap(capacity_, other.capacity_);
-    std::swap(data_, other.data_);
+template <typename T, typename Allocator>
+typename DynamicStorage<T, Allocator>::value_type& DynamicStorage<T, Allocator>::operator[](size_type idx) {
+
 }
+
+// ----------------------------------------------------------------------------
 
 } // nostd::storage

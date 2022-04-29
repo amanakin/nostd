@@ -54,6 +54,11 @@ void TestAssign(const Storage& storage) {
 
     new_storage = storage;
     TestEqual(new_storage, storage);
+
+    Storage another_storage;
+
+    another_storage = std::move(new_storage);
+    TestEqual(another_storage, storage);
 }
 // ============================================================================
 
@@ -79,12 +84,18 @@ TEST(LocalStorage, Copy) {
     TestCopy(storage);
 }
 
-TEST(LocalStorage, Assign) {
-    nostd::storage::LocalStorage<int, 1> storage1;
-    storage1.data(0) = 0xDAD;
+TEST(LocalStorage, Move) {
+    nostd::storage::LocalStorage<int, 10> storage;
+    storage.data(5) = 0xDAD;
 
-    auto storage2 = storage1;
-    ASSERT_EQ(storage2.data(0), 0xDAD);
+    TestMove(storage);
+}
+
+TEST(LocalStorage, Assign) {
+    nostd::storage::LocalStorage<int, 10> storage;
+    storage.data(5) = 0xDAD;
+
+    TestAssign(storage);
 }
 
 // ============================================================================
@@ -123,26 +134,24 @@ TEST(DynamicStorage, Resize) {
 }
 
 TEST(DynamicStorage, Copy) {
-    nostd::storage::DynamicStorage<int> storage(1);
-    storage.data(0) = 0xDAD;
+    nostd::storage::DynamicStorage<int> storage(10);
+    storage.data(5) = 0xDAD;
 
     TestCopy(storage);
 }
 
 TEST(DynamicStorage, Move) {
-    nostd::storage::DynamicStorage<int> storage(1);
-    storage.data(0) = 0xDAD;
+    nostd::storage::DynamicStorage<int> storage(10);
+    storage.data(5) = 0xDAD;
 
     TestMove(storage);
 }
 
 TEST(DynamicStorage, Assign) {
-    nostd::storage::DynamicStorage<int> storage1(1);
-    storage1.data(0) = 0xDAD;
-    nostd::storage::DynamicStorage<int> storage2(1);
-    storage2.data(0) = 0xBEB;
+    nostd::storage::DynamicStorage<int> storage(10);
+    storage.data(5) = 0xDAD;
 
-    TestAssign(storage1, storage2);
+    TestAssign(storage);
 }
 
 // ============================================================================

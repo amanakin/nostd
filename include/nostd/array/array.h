@@ -4,19 +4,23 @@
 #include <cstdint>
 #include <initializer_list>
 #include <stdexcept>
+#include <concepts>
 
-#include <nostd/util.h>
+#include <nostd/concepts/concepts.h>
 #include <nostd/storage/storage.h>
+
+/*
+ * reserve <-------------
+ * shrink_to_fit        |
+ * push_back_expand  ---|
+ */
 
 namespace nostd {
 
 // ============================================================================
 
-template<
-        typename T,
-        template<typename StorageType> typename Storage
-        >
-struct Array : public Storage<T> {
+template <typename T, template<typename StorageT> typename Storage>
+struct Array {
 
     template <bool isConst>
     class ArrayIterator {
@@ -25,16 +29,14 @@ struct Array : public Storage<T> {
         using iterator_category = std::random_access_iterator_tag;
 
         using value_type = std::conditional_t<isConst, const T, T>;
-        using pointer   = std::conditional_t<isConst, const T *, T *>;
-        using reference = std::conditional_t<isConst, const T &, T &>;
-
-        ArrayIterator(size_t index, Array* array) : index_(index), array_(array) {}
+        using pointer    = std::conditional_t<isConst, const T*, T*>;
+        using reference  = std::conditional_t<isConst, const T&, T&>;
 
         bool operator==(const ArrayIterator& other) const {return index_ == other.index_ && array_ == other.array_;}
         bool operator!=(const ArrayIterator& other) const {return index_ != other.index_ || array_ != other.array_;}
 
-        reference operator*() const {return (*array_)[index_];}
-        pointer operator->() const {return &((*array_)[index_]);}
+        reference operator*()  const {return (*array_)[index_];}
+        pointer   operator->() const {return array_ + index_;}
 
         ArrayIterator& operator++() noexcept {++index_; return *this;}
         ArrayIterator operator++(int) noexcept {
@@ -61,31 +63,48 @@ struct Array : public Storage<T> {
             return index_ - other.index_;
         }
 
-        bool operator>(const  ArrayIterator& other) const {verify_array(other); return index_ > other.index_;}
-        bool operator<(const  ArrayIterator& other) const {verify_array(other); return index_ < other.index_;}
-        bool operator>=(const ArrayIterator& other) const {verify_array(other); return index_ >= other.index_;}
-        bool operator<=(const ArrayIterator& other) const {verify_array(other); return index_ <= other.index_;}
+        bool operator> (const  ArrayIterator& other) const {verify_array(other); return index_ > other.index_;}
+        bool operator< (const  ArrayIterator& other) const {verify_array(other); return index_ < other.index_;}
+        bool operator>=(const  ArrayIterator& other) const {verify_array(other); return index_ >= other.index_;}
+        bool operator<=(const  ArrayIterator& other) const {verify_array(other); return index_ <= other.index_;}
 
     private:
+        friend Array;
+        ArrayIterator(size_t index, Array* array) : index_(static_cast<int64_t>(index)), array_(array) {}
+
         void verify_array(const ArrayIterator& other) const {
             if (array_ != other.array_) {
-                throw std::invalid_argument("array iterators have different array pointers in operator-");
+                throw std::invalid_argument("array iterators belong to different arrays");
             }
         }
 
-        size_t index_;
+        int64_t index_;
         Array* array_;
     };
+
+    using value_type = T;
+    using size_type = size_t;
+    using difference_type = typename ArrayIterator<true>::difference_type;
+    using reference = value_type&;
+    using const_reference = const value_type&;
+    using pointer = value_type*;
+    using const_pointer = const value_type*;
 
     using iterator = ArrayIterator<false>;
     using const_iterator = ArrayIterator<true>;
     using reverse_iterator = std::reverse_iterator<iterator>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
+    // Creating
     Array() noexcept;
-    explicit Array(size_t size);
-    Array(size_t size, const T &val);
-    Array(std::initializer_list<T> list);
+
+    // Exception guarantees destruction of created elements
+    explicit Array(size_type size);
+    Array(size_type size, const value_type& val);
+    Array(std::initializer_list<value_type> list)
+        requires concepts::move_constructible<T>;
+    Array(std::initializer_list<value_type> list)
+        requires concepts::only_copy_constructible<T>;
 
     Array(const Array &other);
     Array &operator=(const Array &other);
@@ -93,322 +112,433 @@ struct Array : public Storage<T> {
     Array(Array &&other) noexcept;
     Array &operator=(Array &&other) noexcept;
 
-    ~Array() = default;
+    ~Array();
 
     // Access
-    [[nodiscard]] const T &operator[](size_t idx) const;
-    [[nodiscard]] T &operator[](size_t idx);
+    // Nice one
+    [[nodiscard]] reference at(size_type idx);
+    [[nodiscard]] const_reference at(size_type idx) const;
 
-    [[nodiscard]] T &front();
-    [[nodiscard]] const T &front() const;
+    // UNSAFE
+    [[nodiscard]] reference operator[](size_type idx);
+    [[nodiscard]] const_reference operator[](size_type idx) const;
 
-    [[nodiscard]] T &back();
-    [[nodiscard]] const T &back() const;
+    // UNSAFE
+    [[nodiscard]] reference front();
+    [[nodiscard]] const_reference front() const;
 
-    // Storage
-    [[nodiscard]] bool empty() const noexcept;
-    [[nodiscard]] size_t size() const noexcept;
-    void resize(size_t size);
-    void clear() noexcept;
-
-    // Modifiers
-    template<typename... Args>
-    void emplace_back(Args &&... args) {
-        Storage<T>::emplace_back(std::forward<Args>(args)...);
-    }
-
-    void push_back(const T &value);
-    void push_back(T &&value);
-
-    void pop_back();
+    // UNSAFE
+    [[nodiscard]] reference &back();
+    [[nodiscard]] const_reference back() const;
 
     // Iterators
     iterator begin() noexcept;
-    const_iterator cbegin() const noexcept;
     const_iterator begin() const noexcept;
 
     iterator end() noexcept;
-    const_iterator cend() const noexcept;
     const_iterator end() const noexcept;
 
+    reverse_iterator rbegin() noexcept;
+    const_reverse_iterator rbegin() const noexcept;
+
+    reverse_iterator rend() noexcept;
+    const_reverse_iterator rend() const noexcept;
+
+    // Capacity
+    [[nodiscard]] bool empty()     const noexcept;
+    [[nodiscard]] size_type size() const noexcept;
+    void reserve(size_type new_cap)
+        requires concepts::move_constructible<T>;
+    void reserve(size_type new_cap)
+        requires concepts::only_copy_constructible<T>;
+    [[nodiscard]] size_type capacity() const noexcept;
+    void shrink_to_fit();
+
+    // Modifiers
+    void clear();
+    void push_back(const value_type& value);
+    void push_back(value_type &&value);
+    void pop_back();
+    void swap(Array& other) noexcept;
+
+    template<typename... Args>
+    void emplace_back(Args &&... args) {
+        check_expand();
+
+        storage_.construct(size_++, std::forward<Args>(args)...);
+    }
+
 protected:
-    void expand_capacity();
-
-    size_t size_{0};
-
-    using Storage<T>::data;
-    using Storage<T>::capacity;
+    Storage<T> storage_;
+    size_type size_{};
 
 private:
+    void check_expand() requires concepts::move_constructible<T>;
+    void check_expand() requires (concepts::copy_constructible<T> && !concepts::move_constructible<T>);
+
+    [[nodiscard]] size_type calc_new_cap() const;
+
+    void check_range(size_type idx) const;
+
+    static constexpr size_type MIN_SIZE{4};
 };
 
+// ========================== Creating ========================================
 // ----------------------------------------------------------------------------
 
-template<
-        typename T,
-        template<typename StorageType> typename Storage
-        >
+template <typename T, template<typename StorageT> typename Storage>
 Array<T, Storage>::Array() noexcept
     : size_(0) {
 }
 
-template<
-        typename T,
-        template<typename StorageType> typename Storage
-        >
-Array<T, Storage>::Array(size_t size)
-        : size_(size), Storage<T>(size) {
+template <typename T, template<typename StorageT> typename Storage>
+Array<T, Storage>::Array(size_type size)
+    : Array(size, T()) {
 }
 
-template<
-        typename T,
-        template<typename StorageType> typename Storage
->
-Array<T, Storage>::Array(size_t size, const T &val)
-        : size_(size), Storage<T>(size) {
-    for (size_t idx = 0; idx < size; ++idx) {
-        data(idx) = val;
-    }
-}
-
-
-template<
-        typename T,
-        template<typename StorageType> typename Storage
->
-Array<T, Storage>::Array(std::initializer_list<T> list)
-        : size_(list.size()), Storage<T>(list.size()) {
-    size_t idx = 0;
-    for (auto &val : list) {
-        data(idx++) = std::move(val);
-    }
-}
-
-template<
-        typename T,
-        template<typename StorageType> typename Storage
-        >
-Array<T, Storage>::Array(const Array& other)
-    : Storage<T>(other) {
-    if (this == &other) {
+template <typename T, template<typename StorageT> typename Storage>
+Array<T, Storage>::Array(size_type size, const value_type& val)
+    : Array() {
+    if (size == 0) {
         return;
     }
 
-    size_ = other.size_;
+    storage_.allocate(size);
+
+    size_type idx = 0;
+    try {
+        for (; idx < size; ++idx) {
+            storage_.construct(idx, val);
+        }
+    }
+    catch (...) {
+        while (idx--) {
+            storage_.destruct(idx);
+        }
+        storage_.deallocate();
+        throw;
+    }
+
+    size_ = size;
 }
 
-template<
-        typename T,
-        template<typename StorageType> typename Storage
-        >
+template <typename T, template<typename StorageT> typename Storage>
+Array<T, Storage>::Array(std::initializer_list<value_type> list)
+    requires concepts::move_constructible<T>
+    : Array() {
+    if (list.size() == 0) {
+        return;
+    }
+
+    storage_.allocate(list.size());
+
+    size_type idx = 0;
+    try {
+        auto it = list.begin();
+        for (; idx < list.size(); ++idx, ++it) {
+            storage_.construct(idx, std::move(*it));
+        }
+    }
+    catch (...) {
+        while (idx--) {
+            storage_.destruct(idx);
+        }
+        storage_.deallocate();
+        throw;
+    }
+
+    size_ = list.size();
+}
+
+template <typename T, template<typename StorageT> typename Storage>
+Array<T, Storage>::Array(std::initializer_list<value_type> list)
+    requires (concepts::copy_constructible<T> && !concepts::move_constructible<T>)
+    : Array() {
+    if (list.size() == 0) {
+        return;
+    }
+
+    storage_.allocate(list.size());
+
+    size_type idx = 0;
+    try {
+        auto it = list.begin();
+        for (; idx < list.size(); ++idx, ++it) {
+            storage_.construct(idx, *it);
+        }
+    }
+    catch (...) {
+        while (idx--) {
+            storage_.destruct(idx);
+        }
+        storage_.deallocate();
+        throw;
+    }
+
+    size_ = list.size();
+}
+
+template <typename T, template<typename StorageT> typename Storage>
+Array<T, Storage>::Array(const Array& other)
+    : Array() {
+    if (other.empty()) {
+        return;
+    }
+
+    storage_.allocate(other.size());
+
+    size_type idx = 0;
+    try {
+        for (; idx < other.size(); ++idx) {
+            storage_.construct(idx, other[idx]);
+        }
+    }
+    catch (...) {
+        while (idx--) {
+            storage_.destruct(idx);
+        }
+        storage_.deallocate();
+        throw;
+    }
+
+    size_ = other.size();
+}
+
+template <typename T, template<typename StorageT> typename Storage>
 Array<T, Storage>& Array<T, Storage>::operator=(const Array& other) {
     if (this == &other) {
         return *this;
     }
 
-    static_cast<Storage<T>&>(*this) = other;
-    size_ = other.size_;
+    Array tmp(other);
+    swap(tmp);
+
+    return *this;
 }
 
-
-template<
-        typename T,
-        template<typename StorageType> typename Storage
-        >
-Array<T, Storage>::Array(Array&& other) noexcept
-    : Storage<T>(other) {
-    if (this == &other) {
-        return;
-    }
-
-    size_ = other.size_;
+template <typename T, template<typename StorageT> typename Storage>
+Array<T, Storage>::Array(Array&& other) noexcept {
+    swap(other);
 }
 
-template<
-        typename T,
-        template<typename StorageType> typename Storage
-        >
+template <typename T, template<typename StorageT> typename Storage>
 Array<T, Storage>& Array<T, Storage>::operator=(Array&& other) noexcept {
     if (this == &other) {
         return *this;
     }
 
-    static_cast<Storage<T>&>(*this) = other;
-    size_ = other.size_;
+    swap(other);
     return *this;
 }
 
-template <
-        typename T,
-        template <typename StorageType> typename Storage
-        >
+template <typename T, template<typename StorageT> typename Storage>
+Array<T, Storage>::~Array() {
+    clear();
+    storage_.deallocate();
+}
+
+// ========================== Access =======================================
+// ----------------------------------------------------------------------------
+
+template <typename T, template<typename StorageT> typename Storage>
+typename Array<T, Storage>::reference Array<T, Storage>::at(size_type idx) {
+    check_range(idx);
+    return storage_[idx];
+}
+
+template <typename T, template<typename StorageT> typename Storage>
+typename Array<T, Storage>::const_reference Array<T, Storage>::at(size_type idx) const {
+    check_range(idx);
+    return storage_[idx];
+}
+
+template <typename T, template<typename StorageT> typename Storage>
 const T& Array<T, Storage>::operator[](size_t idx) const {
-    return data(idx);
+    return storage_[idx];
 }
 
-template <
-        typename T,
-        template <typename StorageType> typename Storage
-        >
+template <typename T, template<typename StorageT> typename Storage>
 T& Array<T, Storage>::operator[](size_t idx) {
-    return data(idx);
+    return storage_[idx];
 }
 
-template <
-        typename T,
-        template <typename StorageType> typename Storage
-        >
+template <typename T, template<typename StorageT> typename Storage>
 T& Array<T, Storage>::front() {
-    return data(0);
+    return storage_[0];
 }
 
-template <
-        typename T,
-        template <typename StorageType> typename Storage
-        >
+template <typename T, template<typename StorageT> typename Storage>
 const T& Array<T, Storage>::front() const {
-    return data(0);
+    return storage_[0];
 }
 
-template <
-        typename T,
-        template <typename StorageType> typename Storage
-        >
+template <typename T, template<typename StorageT> typename Storage>
 T& Array<T, Storage>::back() {
-    return data(size_ - 1);
+    return storage_[size_ - 1];
 }
 
-template <
-        typename T,
-        template <typename StorageType> typename Storage
-        >
+template <typename T, template<typename StorageT> typename Storage>
 const T& Array<T, Storage>::back() const {
-    return data(size_ - 1);
+    return storage_[size_ - 1];
 }
 
-template <
-        typename T,
-        template <typename StorageType> typename Storage
-        >
-bool Array<T, Storage>::empty() const noexcept {
-    return size_ == 0;
-}
+// ========================== Iterators =======================================
+// ----------------------------------------------------------------------------
 
-template <
-        typename T,
-        template <typename StorageType> typename Storage
-        >
-size_t Array<T, Storage>::size() const noexcept {
-    return size_;
-}
-
-template <
-        typename T,
-        template <typename StorageType> typename Storage
-        >
-void Array<T, Storage>::resize(size_t size) {
-    Storage<T>::resize(size);
-}
-
-template <
-        typename T,
-        template <typename StorageType> typename Storage
-        >
-void Array<T, Storage>::clear() noexcept {
-    Storage<T>::resize(0);
-}
-
-template <
-        typename T,
-        template <typename StorageType> typename Storage
-        >
-void Array<T, Storage>::push_back(const T& value) {
-    if (size_ == capacity()) {
-        expand_capacity();
-    }
-
-    data(size_++) = std::move(value);
-}
-
-template <
-        typename T,
-        template <typename StorageType> typename Storage
-        >
-void Array<T, Storage>::push_back(T&& value) {
-    if (size_ == capacity()) {
-        expand_capacity();
-    }
-
-    data(size_++) = std::move(value);
-}
-
-template <
-        typename T,
-        template <typename StorageType> typename Storage
-        >
-void Array<T, Storage>::pop_back() {
-    if (size_ == 0) {
-        return;
-    }
-
-    size_--;
-}
-
-template <
-        typename T,
-        template <typename StorageType> typename Storage
-        >
-void Array<T, Storage>::expand_capacity() {
-    Storage<T>::resize(size_ * 2);
-}
-
-template <
-        typename T,
-        template <typename StorageType> typename Storage
->
+template <typename T, template<typename StorageT> typename Storage>
 typename Array<T, Storage>::iterator Array<T, Storage>::begin() noexcept {
     return iterator(0, this);
 }
 
-template <
-        typename T,
-        template <typename StorageType> typename Storage
->
-typename Array<T, Storage>::const_iterator Array<T, Storage>::cbegin() const noexcept {
+template <typename T, template<typename StorageT> typename Storage>
+typename Array<T, Storage>::const_iterator Array<T, Storage>::begin() const noexcept {
     return const_iterator(0, this);
 }
 
-template <
-        typename T,
-        template <typename StorageType> typename Storage
-        >
-typename Array<T, Storage>::const_iterator Array<T, Storage>::begin() const noexcept {
-    return cbegin();
-}
-
-template <
-        typename T,
-        template <typename StorageType> typename Storage
->
+template <typename T, template<typename StorageT> typename Storage>
 typename Array<T, Storage>::iterator Array<T, Storage>::end() noexcept {
     return iterator(size_, this);
 }
 
-template <
-        typename T,
-        template <typename StorageType> typename Storage
->
-typename Array<T, Storage>::const_iterator Array<T, Storage>::cend() const noexcept {
-    return const_iterator (size_, this);
+template <typename T, template<typename StorageT> typename Storage>
+typename Array<T, Storage>::const_iterator Array<T, Storage>::end() const noexcept {
+    return const_iterator(size_, this);
 }
 
-template <
-        typename T,
-        template <typename StorageType> typename Storage
->
-typename Array<T, Storage>::const_iterator Array<T, Storage>::end() const noexcept {
-    return cend();
+template <typename T, template<typename StorageT> typename Storage>
+typename Array<T, Storage>::reverse_iterator Array<T, Storage>::rbegin() noexcept {
+    return reverse_iterator(size_, this);
 }
+
+template <typename T, template<typename StorageT> typename Storage>
+typename Array<T, Storage>::const_reverse_iterator Array<T, Storage>::rbegin() const noexcept {
+    return const_reverse_iterator(size_, this);
+}
+
+template <typename T, template<typename StorageT> typename Storage>
+typename Array<T, Storage>::reverse_iterator Array<T, Storage>::rend() noexcept {
+    return reverse_iterator(0, this);
+}
+
+template <typename T, template<typename StorageT> typename Storage>
+typename Array<T, Storage>::const_reverse_iterator Array<T, Storage>::rend() const noexcept {
+    return const_reverse_iterator(0, this);
+}
+
+// ========================== Capacity ========================================
+// ----------------------------------------------------------------------------
+
+template <typename T, template<typename StorageT> typename Storage>
+bool Array<T, Storage>::empty() const noexcept {
+    return size_ == 0;
+}
+
+template <typename T, template<typename StorageT> typename Storage>
+size_t Array<T, Storage>::size() const noexcept {
+    return size_;
+}
+
+template <typename T, template<typename StorageT> typename Storage>
+void Array<T, Storage>::reserve(size_type new_cap) {
+
+}
+
+template <typename T, template<typename StorageT> typename Storage>
+typename Array<T, Storage>::size_type Array<T, Storage>::capacity() const noexcept {
+    return storage_.capacity();
+}
+
+template <typename T, template<typename StorageT> typename Storage>
+void Array<T, Storage>::shrink_to_fit() {
+    if (size() == capacity()) {
+        return;
+    }
+
+    Array new_array(*this);
+    swap(new_array);
+}
+
+// ========================== Modifiers =======================================
+// ----------------------------------------------------------------------------
+
+template <typename T, template<typename StorageT> typename Storage>
+void Array<T, Storage>::clear() {
+    while (!empty()) {
+        pop_back();
+    }
+}
+
+template <typename T, template<typename StorageT> typename Storage>
+void Array<T, Storage>::push_back(const T& value) {
+    emplace_back(value);
+}
+
+template <typename T, template<typename StorageT> typename Storage>
+void Array<T, Storage>::push_back(T&& value) {
+    emplace_back(std::move(value));
+}
+
+template <typename T, template<typename StorageT> typename Storage>
+void Array<T, Storage>::pop_back() {
+    size_--;
+    storage_.destruct(size_);
+}
+
+template <typename T, template<typename StorageT> typename Storage>
+void Array<T, Storage>::swap(Array& other) noexcept {
+    storage_.swap(other.storage_);
+    std::swap(size_, other.size_);
+}
+
+// ----------------------------------------------------------------------------
+
+template <typename T, template<typename StorageT> typename Storage>
+void Array<T, Storage>::check_expand()
+    requires concepts::move_constructible<T> {
+    if (size_ != storage_.capacity()) {
+        return;
+    }
+
+    Array new_array;
+    new_array.reserve(calc_new_cap());
+
+    for (auto& el: *this) {
+        new_array.emplace_back(std::move(el));
+    }
+
+    swap(new_array);
+}
+
+template <typename T, template<typename StorageT> typename Storage>
+void Array<T, Storage>::check_expand()
+    requires (concepts::copy_constructible<T> && !concepts::move_constructible<T>) {
+    if (size_ != storage_.capacity()) {
+        return;
+    }
+
+    Array new_array;
+    new_array.reserve(calc_new_cap());
+
+    for (auto& el: *this) {
+        new_array.template emplace_back(el);
+    }
+
+    swap(new_array);
+}
+
+template <typename T, template<typename StorageT> typename Storage>
+typename Array<T, Storage>::size_type Array<T, Storage>::calc_new_cap() const {
+    return size_ == 0 ? MIN_SIZE : size_ * 2;
+}
+
+template <typename T, template<typename StorageT> typename Storage>
+void Array<T, Storage>::check_range(size_type idx) const {
+    if (idx >= storage_) {
+        throw std::out_of_range("Array::check_range failed");
+    }
+}
+
+} // nostd:;
 
 // ============================================================================
 /*
@@ -572,8 +702,5 @@ template <template <typename StorageType> typename Storage>
 bool Array<bool, Storage>::empty() const noexcept {
     return size == 0;
 }*/
-
-
-} // nostd
 
 // ============================================================================

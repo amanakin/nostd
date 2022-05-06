@@ -2,7 +2,7 @@
 
 #include <type_traits>
 
-namespace nostd::concepts {
+namespace nostd {
 
 template <typename T>
     concept move_constructible =
@@ -17,4 +17,4 @@ template <typename T>
         copy_constructible<T> &&
         !move_constructible<T>;
 
-} // nostd::concepts
+} // nostd

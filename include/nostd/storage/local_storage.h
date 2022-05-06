@@ -4,78 +4,62 @@
 namespace nostd::storage {
 
 template <typename T, size_t Capacity>
-struct LocalStorage {
-    LocalStorage() = default;
+struct LocalStorageImpl {
+    using value_type = T;
+    using size_type = size_t;
+    static constexpr auto value_size = sizeof(T);
 
-    LocalStorage(const LocalStorage& other) noexcept;
-    LocalStorage& operator=(const LocalStorage& other) noexcept;
+    LocalStorageImpl() = default;
+    void allocate(size_type cap);
+    void deallocate();
+    void swap(LocalStorageImpl& other);
 
-    LocalStorage(LocalStorage&& other) noexcept;
-    LocalStorage& operator=(LocalStorage&& other) noexcept;
+    [[nodiscard]] size_type capacity() const;
 
-    [[nodiscard]] virtual const T& data(size_t idx) const;
-    [[nodiscard]] virtual T& data(size_t idx);
+    template <typename... Args>
+    void construct(size_type idx, Args&&... args ) {
+        new(data_ + idx * value_size) T(std::forward<Args>(args)...);
+    }
+    void destruct(size_type idx);
 
-    [[nodiscard]] virtual size_t capacity() const;
-
-    virtual ~LocalStorage() = default;
-
+    [[nodiscard]] const T& operator[](size_type idx) const;
+    [[nodiscard]] T& operator[](size_type idx);
 private:
-    T data_[Capacity];
+    alignas(sizeof(T)) char data_[Capacity * sizeof(T)];
 };
 
 template <typename T, size_t Capacity>
-LocalStorage<T, Capacity>::LocalStorage(const LocalStorage& other) noexcept {
-    if (this == &other) {
-        return;
-    }
-
-    for (size_t idx = 0; idx < Capacity; ++idx) {
-        data_[idx] = other.data_[idx];
-    }
+void LocalStorageImpl<T, Capacity>::allocate(size_type cap) {
 }
 
 template <typename T, size_t Capacity>
-LocalStorage<T, Capacity>& LocalStorage<T, Capacity>::operator=(const LocalStorage& other) noexcept {
-    if (this == &other) {
-        return *this;
-    }
-
-    for (size_t idx = 0; idx < Capacity; ++idx) {
-        data_[idx] = other.data_[idx];
-    }
-
-    return *this;
+void LocalStorageImpl<T, Capacity>::deallocate() {
 }
 
 template <typename T, size_t Capacity>
-LocalStorage<T, Capacity>::LocalStorage(LocalStorage&& other) noexcept
-    : LocalStorage(other) {
+void LocalStorageImpl<T, Capacity>::swap(LocalStorageImpl& other) {
+    // TODO add swapping
 }
 
-template <typename T, size_t Capacity>
-LocalStorage<T, Capacity>& LocalStorage<T, Capacity>::operator=(LocalStorage&& other) noexcept {
-    return this->operator=(other); // NOLINT
-}
+// ----------------------------------------------------------------------------
 
 template <typename T, size_t Capacity>
-const T& LocalStorage<T, Capacity>::data(size_t idx) const {
-    if (idx >= Capacity) {
-        throw std::out_of_range("LocalStorage: data error");
-    }
-    return data_[idx];
-}
-
-template <typename T, size_t Capacity>
-T& LocalStorage<T, Capacity>::data(size_t idx) {
-    return const_cast<T&>(
-            const_cast<const LocalStorage*>(this)->data(idx)
-    );
-}
-
-template <typename T, size_t Capacity>
-size_t LocalStorage<T, Capacity>::capacity() const {
+typename LocalStorageImpl<T, Capacity>::size_type LocalStorageImpl<T, Capacity>::capacity() const {
     return Capacity;
+}
+
+template <typename T, size_t Capacity>
+void LocalStorageImpl<T, Capacity>::destruct(size_type idx) {
+    reinterpret_cast<T*>(data_ + idx * value_size)->~T();
+}
+
+template <typename T, size_t Capacity>
+const typename LocalStorageImpl<T, Capacity>::value_type& LocalStorageImpl<T, Capacity>::operator[](size_type idx) const {
+    return *reinterpret_cast<const T*>(data_ + idx * value_size);
+}
+template <typename T, size_t Capacity>
+typename LocalStorageImpl<T, Capacity>::value_type& LocalStorageImpl<T, Capacity>::operator[](size_type idx) {
+    return *reinterpret_cast<T*>(data_ + idx * value_size);
 }
 
 } // nostd::storage

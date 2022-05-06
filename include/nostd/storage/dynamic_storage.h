@@ -3,14 +3,15 @@
 namespace nostd::storage {
 
 template <typename T, typename Allocator = std::allocator<T>>
-struct DynamicStorage {
+    requires std::is_same_v<T, typename Allocator::value_type>
+struct DynamicStorageImpl {
     using value_type = T;
     using size_type = size_t;
 
-    explicit DynamicStorage(const Allocator& alloc = Allocator()) noexcept;
+    explicit DynamicStorageImpl(const Allocator& alloc = Allocator()) noexcept;
     void allocate(size_type cap);
     void deallocate();
-    void swap(const DynamicStorage& other);
+    void swap(DynamicStorageImpl& other);
 
     // Data
     [[nodiscard]] size_type capacity() const;
@@ -35,13 +36,15 @@ private:
 // ----------------------------------------------------------------------------
 
 template <typename T, typename Allocator>
-DynamicStorage<T, Allocator>::DynamicStorage(const Allocator& alloc) noexcept
+    requires std::is_same_v<T, typename Allocator::value_type>
+DynamicStorageImpl<T, Allocator>::DynamicStorageImpl(const Allocator& alloc) noexcept
     : alloc_(alloc) {
 }
 
 template <typename T, typename Allocator>
-void DynamicStorage<T, Allocator>::allocate(size_type cap) {
-    if (capacity_ == 0) {
+    requires std::is_same_v<T, typename Allocator::value_type>
+void DynamicStorageImpl<T, Allocator>::allocate(size_type cap) {
+    if (cap == 0) {
         return;
     }
 
@@ -50,7 +53,8 @@ void DynamicStorage<T, Allocator>::allocate(size_type cap) {
 }
 
 template <typename T, typename Allocator>
-void DynamicStorage<T, Allocator>::deallocate() {
+    requires std::is_same_v<T, typename Allocator::value_type>
+void DynamicStorageImpl<T, Allocator>::deallocate() {
     if (capacity_ == 0) {
         return;
     }
@@ -59,7 +63,8 @@ void DynamicStorage<T, Allocator>::deallocate() {
 }
 
 template <typename T, typename Allocator>
-void DynamicStorage<T, Allocator>::swap(const DynamicStorage& other) {
+    requires std::is_same_v<T, typename Allocator::value_type>
+void DynamicStorageImpl<T, Allocator>::swap(DynamicStorageImpl& other) {
     std::swap(capacity_, other.capacity_);
     std::swap(alloc_, other.alloc_);
     std::swap(data_, other.data_);
@@ -68,23 +73,27 @@ void DynamicStorage<T, Allocator>::swap(const DynamicStorage& other) {
 // ----------------------------------------------------------------------------
 
 template <typename T, typename Allocator>
-typename DynamicStorage<T, Allocator>::size_type DynamicStorage<T, Allocator>::capacity() const {
+    requires std::is_same_v<T, typename Allocator::value_type>
+typename DynamicStorageImpl<T, Allocator>::size_type DynamicStorageImpl<T, Allocator>::capacity() const {
     return capacity_;
 }
 
 template <typename T, typename Allocator>
-void DynamicStorage<T, Allocator>::destruct(size_type idx) {
+    requires std::is_same_v<T, typename Allocator::value_type>
+void DynamicStorageImpl<T, Allocator>::destruct(size_type idx) {
     traits_t::destroy(alloc_, data_ + idx);
 }
 
 template <typename T, typename Allocator>
-const typename DynamicStorage<T, Allocator>::value_type& DynamicStorage<T, Allocator>::operator[](size_type idx) const {
-
+    requires std::is_same_v<T, typename Allocator::value_type>
+const typename DynamicStorageImpl<T, Allocator>::value_type& DynamicStorageImpl<T, Allocator>::operator[](size_type idx) const {
+    return *(data_ + idx);
 }
 
 template <typename T, typename Allocator>
-typename DynamicStorage<T, Allocator>::value_type& DynamicStorage<T, Allocator>::operator[](size_type idx) {
-
+    requires std::is_same_v<T, typename Allocator::value_type>
+typename DynamicStorageImpl<T, Allocator>::value_type& DynamicStorageImpl<T, Allocator>::operator[](size_type idx) {
+    return *(data_ + idx);
 }
 
 // ----------------------------------------------------------------------------
